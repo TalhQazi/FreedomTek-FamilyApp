@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 
 import {
+  Alert,
   Animated,
   Modal,
   ScrollView,
@@ -12,7 +13,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { BASE_URL, createFamilyCall } from '../../src/apiClient';
+import { BASE_URL, createFamilyCall, FamilyWalletState, getFamilyWallet } from '../../src/apiClient';
+import { PlanId, usePlan } from '../../src/planContext';
 
 type InmateInfo = {
   name: string;
@@ -65,6 +67,7 @@ const HomeDashboardScreen: React.FC = () => {
   const [callDateTime, setCallDateTime] = useState('');
   const [callNotes, setCallNotes] = useState('');
   const [submittingCall, setSubmittingCall] = useState(false);
+  const { currentPlan, setCurrentPlan } = usePlan();
 
   useEffect(() => {
     const loadData = async () => {
@@ -90,6 +93,22 @@ const HomeDashboardScreen: React.FC = () => {
     };
 
     loadData();
+  }, []);
+
+  // Load wallet to determine which plan is active for access control
+  useEffect(() => {
+    const loadWallet = async () => {
+      try {
+        const token = await AsyncStorage.getItem('familyAccessToken');
+        if (!token) return;
+        const wallet: FamilyWalletState = await getFamilyWallet(token);
+        setCurrentPlan(wallet.currentPlan || null);
+      } catch {
+        // If wallet fails, we keep currentPlan as null and rely on Balance screen
+      }
+    };
+
+    loadWallet();
   }, []);
 
   // Realtime incoming call listener via WebSocket
@@ -160,8 +179,43 @@ const HomeDashboardScreen: React.FC = () => {
 
   const greetingName = user?.name || 'Family Member';
 
+  type FeatureKey = 'messages' | 'photos' | 'requests' | 'schedule' | 'calls';
+
+  const canAccessFeature = (feature: FeatureKey): boolean => {
+    if (!currentPlan) {
+      return false;
+    }
+
+    if (currentPlan === 'bronze') {
+      return feature === 'messages';
+    }
+
+    if (currentPlan === 'silver') {
+      return (
+        feature === 'messages' ||
+        feature === 'photos' ||
+        feature === 'requests' ||
+        feature === 'schedule'
+      );
+    }
+
+    // Gold: everything
+    return true;
+  };
+
   const handleQuickNav = (path: string) => {
     router.push(path as never);
+  };
+
+  const handleProtectedNav = (feature: FeatureKey, path: string) => {
+    if (!canAccessFeature(feature)) {
+      Alert.alert(
+        'Upgrade required',
+        'This feature is not available on your current plan. You can upgrade on the Balance screen.',
+      );
+      return;
+    }
+    handleQuickNav(path);
   };
 
   const getActivityIcon = (type: string) => {
@@ -175,7 +229,7 @@ const HomeDashboardScreen: React.FC = () => {
   };
 
   const renderActivityItem = ({ item, index }: { item: ActivityItem; index: number }) => (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.activityItem,
         { opacity: 1 - (index * 0.1) } // Subtle fade effect for older items
@@ -194,8 +248,22 @@ const HomeDashboardScreen: React.FC = () => {
     </Animated.View>
   );
 
-  const QuickActionCard = ({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) => (
-    <TouchableOpacity style={styles.quickCard} onPress={onPress}>
+  const QuickActionCard = ({
+    icon,
+    label,
+    onPress,
+    disabled,
+  }: {
+    icon: string;
+    label: string;
+    onPress: () => void;
+    disabled?: boolean;
+  }) => (
+    <TouchableOpacity
+      style={[styles.quickCard, disabled && styles.quickCardDisabled]}
+      onPress={onPress}
+      activeOpacity={disabled ? 1 : 0.7}
+    >
       <View style={styles.quickIconContainer}>
         <Text style={styles.quickIcon}>{icon}</Text>
       </View>
@@ -248,7 +316,7 @@ const HomeDashboardScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -358,45 +426,55 @@ const HomeDashboardScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>Quick Actions</Text>
           </View>
           <View style={styles.quickGrid}>
-            <QuickActionCard 
-              icon="📩" 
-              label="Messages" 
-              onPress={() => handleQuickNav('/home/messages')} 
+            <QuickActionCard
+              icon="📩"
+              label="Messages"
+              onPress={() => handleProtectedNav('messages', '/home/messages')}
+              disabled={!canAccessFeature('messages')}
             />
-            <QuickActionCard 
-              icon="📸" 
-              label="Photos" 
-              onPress={() => handleQuickNav('/photos')} 
+            <QuickActionCard
+              icon="📸"
+              label="Photos"
+              onPress={() => handleProtectedNav('photos', '/photos')}
+              disabled={!canAccessFeature('photos')}
             />
-            <QuickActionCard 
-              icon="📝" 
-              label="Requests" 
-              onPress={() => handleQuickNav('/requests')} 
+            <QuickActionCard
+              icon="📝"
+              label="Requests"
+              onPress={() => handleProtectedNav('requests', '/requests')}
+              disabled={!canAccessFeature('requests')}
             />
-            <QuickActionCard 
-              icon="📅" 
-              label="Schedule" 
-              onPress={() => handleQuickNav('/home/schedule')} 
+            <QuickActionCard
+              icon="📅"
+              label="Schedule"
+              onPress={() => handleProtectedNav('schedule', '/home/schedule')}
+              disabled={!canAccessFeature('schedule')}
             />
-            <QuickActionCard 
-              icon="📞" 
-              label="Calls" 
-              onPress={() => handleQuickNav('/home/calls')} 
+            <QuickActionCard
+              icon="📞"
+              label="Calls"
+              onPress={() => handleProtectedNav('calls', '/home/calls')}
+              disabled={!canAccessFeature('calls')}
             />
-            <QuickActionCard 
-              icon="💰" 
-              label="Balance" 
-              onPress={() => handleQuickNav('/home/balance')} 
+            <QuickActionCard
+              icon="💰"
+              label="Balance"
+              onPress={() => handleQuickNav('/home/balance')}
             />
-            <QuickActionCard 
-              icon="💳" 
-              label="Pricing" 
-              onPress={() => handleQuickNav('/home/pricing')} 
+            <QuickActionCard
+              icon="💳"
+              label="Pricing"
+              onPress={() => handleQuickNav('/home/pricing')}
             />
-            <QuickActionCard 
-              icon="⚙️" 
-              label="Settings" 
-              onPress={() => handleQuickNav('/home/settings')} 
+            <QuickActionCard
+              icon="ℹ️"
+              label="Info"
+              onPress={() => handleQuickNav('/home/info')}
+            />
+            <QuickActionCard
+              icon="⚙️"
+              label="Settings"
+              onPress={() => handleQuickNav('/home/settings')}
             />
           </View>
         </View>
@@ -612,6 +690,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  quickCardDisabled: {
+    opacity: 0.4,
   },
   quickIconContainer: {
     width: 48,

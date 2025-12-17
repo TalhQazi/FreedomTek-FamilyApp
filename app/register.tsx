@@ -92,7 +92,17 @@ const RegisterScreen: React.FC = () => {
       ]);
     } catch (error: any) {
       console.error('[Register] Error', error);
-      Alert.alert('Registration', error?.message || 'Something went wrong while creating your account. Please try again.');
+      const rawMessage = String(error?.message || '').toLowerCase();
+
+      if (rawMessage.includes('invalid inmate id')) {
+        Alert.alert('Invalid inmate ID', 'The inmate ID you entered is not valid. Please double-check it and try again.');
+      } else if (rawMessage.includes('already exists')) {
+        Alert.alert('Account exists', 'A family account with this email already exists. Please login instead.');
+      } else if (rawMessage.includes('failed to fetch') || rawMessage.includes('network')) {
+        Alert.alert('Network error', 'Could not reach the server. Please check your internet connection and try again.');
+      } else {
+        Alert.alert('Registration', error?.message || 'Something went wrong while creating your account. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

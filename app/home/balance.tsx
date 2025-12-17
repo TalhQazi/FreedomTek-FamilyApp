@@ -2,8 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { addFamilyWalletBalance, FamilyWalletState, getFamilyWallet, selectFamilyPlan } from '../../src/apiClient';
-
-type PlanId = 'bronze' | 'silver' | 'gold';
+import { PlanId, usePlan } from '../../src/planContext';
 
 const HomeBalanceScreen: React.FC = () => {
   const [balance, setBalance] = useState<number>(0);
@@ -14,6 +13,7 @@ const HomeBalanceScreen: React.FC = () => {
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<PlanId | null>(null);
   const [isConfirmPlanModalVisible, setIsConfirmPlanModalVisible] = useState(false);
+  const { setCurrentPlan: setGlobalPlan, currentPlan: globalPlan } = usePlan();
 
   useEffect(() => {
     loadData();
@@ -31,6 +31,7 @@ const HomeBalanceScreen: React.FC = () => {
       setBalance(wallet.balance || 0);
       setCurrentPlan(wallet.currentPlan || null);
       setCurrentPlanPurchasedAt(wallet.currentPlanPurchasedAt);
+      setGlobalPlan(wallet.currentPlan || null);
     } catch (error: any) {
       setMessage(error?.message || 'Unable to load wallet details.');
     }
@@ -76,6 +77,7 @@ const HomeBalanceScreen: React.FC = () => {
       setBalance(wallet.balance || 0);
       setCurrentPlan(wallet.currentPlan || null);
       setCurrentPlanPurchasedAt(wallet.currentPlanPurchasedAt);
+      setGlobalPlan(wallet.currentPlan || null);
 
       setMessage(
         `You have successfully purchased the ${

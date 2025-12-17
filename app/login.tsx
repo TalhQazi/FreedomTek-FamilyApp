@@ -44,7 +44,15 @@ const LoginScreen: React.FC = () => {
       router.replace('/home' as never);
     } catch (error: any) {
       console.error('[Login] Error', error);
-      Alert.alert('Login failed', error?.message || 'Something went wrong while logging in. Please try again.');
+      const rawMessage = String(error?.message || '').toLowerCase();
+
+      if (rawMessage.includes('invalid credentials')) {
+        Alert.alert('Login failed', 'Invalid email or password. Please check and try again.');
+      } else if (rawMessage.includes('failed to fetch') || rawMessage.includes('network')) {
+        Alert.alert('Network error', 'Could not reach the server. Please check your internet connection and try again.');
+      } else {
+        Alert.alert('Login failed', error?.message || 'Something went wrong while logging in. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

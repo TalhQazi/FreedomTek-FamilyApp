@@ -1,8 +1,6 @@
 // Use local backend during development, production URL otherwise.
 // Backend server.js listens on PORT env or 3000 by default.
-export const BASE_URL = __DEV__
-  ? 'http://localhost:3000'
-  : 'https://freedom-tech.onrender.com';
+export const BASE_URL = 'https://freedom-tech.onrender.com';
 
 async function handleResponse(response: Response) {
   const text = await response.text();
