@@ -12,6 +12,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { getFamilyThreadMessages, sendFamilyMessage } from '../../../src/apiClient';
 
 interface FamilyMessage {
@@ -127,44 +129,47 @@ const ThreadScreen: React.FC = () => {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backText}>{'<'} Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Messages</Text>
-        <Text style={styles.headerSubtitle}>INM-ID: {inmateId}</Text>
-      </View>
+    <SafeAreaView style={styles.root} edges={['bottom']}>
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backText}>{'<'} Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Messages</Text>
+          <Text style={styles.headerSubtitle}>INM-ID: {inmateId}</Text>
+        </View>
 
-      <FlatList
-        data={messages}
-        keyExtractor={(item) => item._id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-      />
-
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="Write a message to your inmate..."
-          placeholderTextColor="#6B7280"
-          value={input}
-          onChangeText={setInput}
-          multiline
+        <FlatList
+          data={messages}
+          keyExtractor={(item) => item._id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
         />
-        <TouchableOpacity
-          style={[styles.sendButton, (!input.trim() || sending) && styles.sendButtonDisabled]}
-          onPress={handleSend}
-          disabled={!input.trim() || sending}
-        >
-          <Text style={styles.sendText}>{sending ? 'Sending...' : 'Send'}</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.input}
+            placeholder="Write a message to your inmate..."
+            placeholderTextColor="#6B7280"
+            value={input}
+            onChangeText={setInput}
+            multiline
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, (!input.trim() || sending) && styles.sendButtonDisabled]}
+            onPress={handleSend}
+            disabled={!input.trim() || sending}
+          >
+            <Text style={styles.sendText}>{sending ? 'Sending...' : 'Send'}</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

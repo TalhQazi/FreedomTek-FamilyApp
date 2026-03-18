@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { familyLogin } from '../src/apiClient';
 
 const LoginScreen: React.FC = () => {
@@ -19,6 +20,7 @@ const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -81,14 +83,34 @@ const LoginScreen: React.FC = () => {
             />
 
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor="#6B7280"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="••••••••"
+                placeholderTextColor="#6B7280"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword((prev) => !prev)}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={20}
+                  color="#9CA3AF"
+                />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.forgotRow}
+              onPress={() => router.push('/forgot-password' as never)}
+            >
+              <Text style={styles.forgotText}>Forgot your password? </Text>
+              <Text style={styles.forgotLink}>Reset it now</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity style={styles.button} activeOpacity={0.8} onPress={handleLogin} disabled={loading}>
               <Text style={styles.buttonText}>{loading ? 'Logging in…' : 'Login'}</Text>
@@ -152,6 +174,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2B31',
     color: '#E5E7EB',
     marginBottom: 8,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  eyeButton: {
+    marginLeft: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  eyeText: {
+    fontSize: 18,
+    color: '#9CA3AF',
+  },
+  forgotRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  forgotText: {
+    color: '#9CA3AF',
+    fontSize: 13,
+  },
+  forgotLink: {
+    color: '#E63946',
+    fontSize: 13,
+    fontWeight: '600',
   },
   button: {
     marginTop: 16,

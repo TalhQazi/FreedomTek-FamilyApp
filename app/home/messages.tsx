@@ -11,14 +11,14 @@ import {
 } from 'react-native';
 
 type LinkedInmate = {
-  inmateId?: string;
+  inmateId: string;
   inmateName?: string;
   facility?: string;
 };
 
 const HomeMessagesScreen: React.FC = () => {
   const router = useRouter();
-  const [linkedInmate, setLinkedInmate] = useState<LinkedInmate | null>(null);
+  const [linkedInmates, setLinkedInmates] = useState<LinkedInmate[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,16 +26,34 @@ const HomeMessagesScreen: React.FC = () => {
       try {
         const storedUser = await AsyncStorage.getItem('familyCurrentUser');
         if (!storedUser) {
-          setLinkedInmate(null);
+          setLinkedInmates([]);
           return;
         }
 
         const parsed = JSON.parse(storedUser) || {};
-        setLinkedInmate({
-          inmateId: parsed.inmateId,
-          inmateName: parsed.inmateName,
-          facility: parsed.facility,
-        });
+
+        // Prefer multi-inmate list from backend login response
+        let inmates: LinkedInmate[] = [];
+        if (Array.isArray(parsed.inmates) && parsed.inmates.length) {
+          inmates = parsed.inmates
+            .filter((i: any) => i && typeof i.inmateId === 'string')
+            .map((i: any) => ({
+              inmateId: i.inmateId,
+              inmateName: i.name,
+              facility: i.facility,
+            }));
+        } else if (parsed.inmateId) {
+          // Backwards-compatible single inmate
+          inmates = [
+            {
+              inmateId: parsed.inmateId,
+              inmateName: parsed.inmateName,
+              facility: parsed.facility,
+            },
+          ];
+        }
+
+        setLinkedInmates(inmates);
       } finally {
         setLoading(false);
       }
@@ -44,11 +62,11 @@ const HomeMessagesScreen: React.FC = () => {
     loadLinkedInmate();
   }, []);
 
-  const handleOpenInbox = () => {
-    if (!linkedInmate?.inmateId) {
+  const handleOpenInbox = (inmateId: string) => {
+    if (!inmateId) {
       return;
     }
-    router.push(`/home/messages/${encodeURIComponent(linkedInmate.inmateId)}` as never);
+    router.push(`/home/messages/${encodeURIComponent(inmateId)}` as never);
   };
 
   return (
@@ -64,7 +82,7 @@ const HomeMessagesScreen: React.FC = () => {
             <ActivityIndicator color="#E63946" />
             <Text style={styles.loadingText}>Loading...</Text>
           </View>
-        ) : !linkedInmate?.inmateId ? (
+        ) : !linkedInmates.length ? (
           <View style={styles.centered}>
             <Text style={styles.emptyTitle}>No inmate linked</Text>
             <Text style={styles.emptyText}>
@@ -72,28 +90,33 @@ const HomeMessagesScreen: React.FC = () => {
             </Text>
           </View>
         ) : (
-          <TouchableOpacity
-            style={styles.inmateCard}
-            activeOpacity={0.8}
-            onPress={handleOpenInbox}
-          >
-            <View style={styles.inmateAvatar}>
-              <Text style={styles.inmateAvatarText}>
-                {(linkedInmate.inmateName || linkedInmate.inmateId || 'I').charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.inmateInfo}>
-              <Text style={styles.inmateLabel}>INM-ID</Text>
-              <Text style={styles.inmateId}>{linkedInmate.inmateId}</Text>
-              {!!linkedInmate.inmateName && (
-                <Text style={styles.inmateName}>{linkedInmate.inmateName}</Text>
-              )}
-              {!!linkedInmate.facility && (
-                <Text style={styles.inmateFacility}>{linkedInmate.facility}</Text>
-              )}
-              <Text style={styles.inboxHint}>Tap to open inbox and send a message request</Text>
-            </View>
-          </TouchableOpacity>
+          <View>
+            {linkedInmates.map((item) => (
+              <TouchableOpacity
+                key={item.inmateId}
+                style={styles.inmateCard}
+                activeOpacity={0.8}
+                onPress={() => handleOpenInbox(item.inmateId)}
+              >
+                <View style={styles.inmateAvatar}>
+                  <Text style={styles.inmateAvatarText}>
+                    {(item.inmateName || item.inmateId || 'I').charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.inmateInfo}>
+                  <Text style={styles.inmateLabel}>INM-ID</Text>
+                  <Text style={styles.inmateId}>{item.inmateId}</Text>
+                  {!!item.inmateName && (
+                    <Text style={styles.inmateName}>{item.inmateName}</Text>
+                  )}
+                  {!!item.facility && (
+                    <Text style={styles.inmateFacility}>{item.facility}</Text>
+                  )}
+                  <Text style={styles.inboxHint}>Tap to open inbox and send a message request</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
       </View>
     </View>

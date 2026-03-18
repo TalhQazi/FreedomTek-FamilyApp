@@ -23,6 +23,13 @@ type CallItem = {
   createdAt: string; // ISO string
   notes?: string;
   status: CallStatus;
+  inmateId?: string;
+};
+
+type LinkedInmate = {
+  inmateId: string;
+  inmateName?: string;
+  facility?: string;
 };
 
 const CallsScreen: React.FC = () => {
@@ -33,6 +40,7 @@ const CallsScreen: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [callNotes, setCallNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [linkedInmates, setLinkedInmates] = useState<LinkedInmate[]>([]);
   const [inmateId, setInmateId] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
@@ -44,21 +52,45 @@ const CallsScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const loadInmate = async () => {
+    const loadInmates = async () => {
       try {
         const storedUser = await AsyncStorage.getItem('familyCurrentUser');
-        if (storedUser) {
-          const parsed = JSON.parse(storedUser);
-          if (parsed && parsed.inmateId) {
-            setInmateId(parsed.inmateId);
-          }
+        if (!storedUser) {
+          setLinkedInmates([]);
+          setInmateId(null);
+          return;
         }
+
+        const parsed = JSON.parse(storedUser) || {};
+
+        let inmates: LinkedInmate[] = [];
+        if (Array.isArray(parsed.inmates) && parsed.inmates.length) {
+          inmates = parsed.inmates
+            .filter((i: any) => i && typeof i.inmateId === 'string')
+            .map((i: any) => ({
+              inmateId: i.inmateId,
+              inmateName: i.name,
+              facility: i.facility,
+            }));
+        } else if (parsed.inmateId) {
+          inmates = [
+            {
+              inmateId: parsed.inmateId,
+              inmateName: parsed.inmateName,
+              facility: parsed.facility,
+            },
+          ];
+        }
+
+        setLinkedInmates(inmates);
+        setInmateId(inmates[0]?.inmateId ?? null);
       } catch {
-        // ignore
+        setLinkedInmates([]);
+        setInmateId(null);
       }
     };
 
-    loadInmate();
+    loadInmates();
   }, []);
 
   const loadUsedCallIds = async () => {
@@ -108,6 +140,7 @@ const CallsScreen: React.FC = () => {
               createdAt: created,
               notes: c.notes || '',
               status: mapStatus(c.status),
+              inmateId: c.inmateId,
             };
           })
         : [];
@@ -162,7 +195,7 @@ const CallsScreen: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!selectedDate || submitting) {
+    if (!selectedDate || submitting || !inmateId) {
       return;
     }
 
@@ -179,6 +212,7 @@ const CallsScreen: React.FC = () => {
       await createFamilyCall(token, {
         scheduledAt: isoDateTime,
         notes: callNotes.trim() || undefined,
+        inmateId,
       });
 
       setShowModal(false);
@@ -223,6 +257,16 @@ const CallsScreen: React.FC = () => {
       footerIcon = '⛔';
     }
 
+    const linkedInmate = item.inmateId
+      ? linkedInmates.find((i) => i.inmateId === item.inmateId)
+      : undefined;
+
+    const inmateLabel = item.inmateId
+      ? linkedInmate && linkedInmate.inmateName
+        ? `${item.inmateId}  ${linkedInmate.inmateName}`
+        : item.inmateId
+      : undefined;
+
     return (
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
@@ -231,6 +275,10 @@ const CallsScreen: React.FC = () => {
           </View>
           <Text style={styles.dateText}>{formatDateTime(item.scheduledAt)}</Text>
         </View>
+
+        {inmateLabel ? (
+          <Text style={styles.inmateInfoText}>{inmateLabel}</Text>
+        ) : null}
 
         {item.notes ? (
           <Text style={styles.notesText} numberOfLines={2}>
@@ -353,10 +401,34 @@ const CallsScreen: React.FC = () => {
               Enter the date & time for your requested call.
             </Text>
 
-            <Text style={styles.modalLabel}>Inmate ID</Text>
-            <View style={styles.readonlyField}>
-              <Text style={styles.readonlyText}>{inmateId || 'Not available'}</Text>
-            </View>
+            <Text style={styles.modalLabel}>Inmate</Text>
+            {linkedInmates.length ? (
+              <View style={styles.inmateChipsRow}>
+                {linkedInmates.map((i) => (
+                  <TouchableOpacity
+                    key={i.inmateId}
+                    style={[
+                      styles.inmateChip,
+                      inmateId === i.inmateId && styles.inmateChipSelected,
+                    ]}
+                    onPress={() => setInmateId(i.inmateId)}
+                  >
+                    <Text
+                      style={[
+                        styles.inmateChipText,
+                        inmateId === i.inmateId && styles.inmateChipTextSelected,
+                      ]}
+                    >
+                      {i.inmateId}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.readonlyField}>
+                <Text style={styles.readonlyText}>Not available</Text>
+              </View>
+            )}
 
             <Text style={styles.modalLabel}>Date & Time</Text>
             <TouchableOpacity
@@ -512,6 +584,11 @@ const styles = StyleSheet.create({
   dateText: {
     color: '#9CA3AF',
     fontSize: 12,
+  },
+  inmateInfoText: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    marginBottom: 4,
   },
   notesText: {
     color: '#E5E7EB',
@@ -676,5 +753,28 @@ const styles = StyleSheet.create({
   dateButtonText: {
     color: '#E5E7EB',
     fontSize: 14,
+  },
+  inmateChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 12,
+    gap: 8,
+  },
+  inmateChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#1F2937',
+  },
+  inmateChipSelected: {
+    backgroundColor: '#E63946',
+  },
+  inmateChipText: {
+    color: '#E5E7EB',
+    fontSize: 13,
+  },
+  inmateChipTextSelected: {
+    fontWeight: '700',
+    color: '#F9FAFB',
   },
 });

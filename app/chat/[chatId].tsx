@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Message = {
   id: number;
@@ -46,6 +47,8 @@ const { width: screenWidth } = Dimensions.get('window');
 const ChatScreen: React.FC = () => {
   const router = useRouter();
   const { chatId } = useLocalSearchParams<{ chatId: string }>();
+  const insets = useSafeAreaInsets();
+
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -93,11 +96,12 @@ const ChatScreen: React.FC = () => {
       setIsLoading(false);
     }
   };
+
   const getAvatarColor = (name: string) => {
-  const colors = ['#E63946', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
-  const index = name.charCodeAt(0) % colors.length;
-  return colors[index];
-};
+    const colors = ['#E63946', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6'];
+    const index = name.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -171,8 +175,8 @@ const ChatScreen: React.FC = () => {
 
       const finalConversation: Conversation = {
         ...updatedConversation,
-        messages: updatedConversation.messages.map(msg => 
-          msg.id === newMessage.id ? sentMessage : msg
+        messages: updatedConversation.messages.map((msg) =>
+          msg.id === newMessage.id ? sentMessage : msg,
         ),
       };
 
@@ -239,8 +243,8 @@ const ChatScreen: React.FC = () => {
 
       const finalConversation: Conversation = {
         ...updatedConversation,
-        messages: updatedConversation.messages.map(msg => 
-          msg.id === newMessage.id ? sentMessage : msg
+        messages: updatedConversation.messages.map((msg) =>
+          msg.id === newMessage.id ? sentMessage : msg,
         ),
       };
 
@@ -249,8 +253,6 @@ const ChatScreen: React.FC = () => {
       setSending(false);
     }, 1500);
   };
-
-  
 
   const renderMessageStatus = (status: Message['status']) => {
     switch (status) {
@@ -271,14 +273,14 @@ const ChatScreen: React.FC = () => {
     const isFamily = item.sender === 'family';
     const showAvatar = !isFamily;
     const avatarColor = getAvatarColor(conversation?.inmateName || '');
-    
+
     return (
       <View
         style={[
           styles.messageContainer,
           isFamily ? styles.messageContainerRight : styles.messageContainerLeft,
-        ]}>
-        
+        ]}
+      >
         {showAvatar && (
           <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
             <Text style={styles.avatarText}>
@@ -286,22 +288,22 @@ const ChatScreen: React.FC = () => {
             </Text>
           </View>
         )}
-        
+
         <View style={styles.messageContent}>
           <View
             style={[
               styles.bubble,
               isFamily ? styles.bubbleFamily : styles.bubbleInmate,
-            ]}>
-            
+            ]}
+          >
             {item.attachment && item.attachment.type === 'image' && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.attachmentContainer}
                 activeOpacity={0.9}
               >
-                <Image 
-                  source={{ uri: item.attachment.uri }} 
-                  style={styles.attachmentImage} 
+                <Image
+                  source={{ uri: item.attachment.uri }}
+                  style={styles.attachmentImage}
                   contentFit="cover"
                 />
                 <View style={styles.attachmentOverlay}>
@@ -309,24 +311,25 @@ const ChatScreen: React.FC = () => {
                 </View>
               </TouchableOpacity>
             )}
-            
+
             {!!item.text && (
               <Text
                 style={[
                   styles.bubbleText,
                   isFamily ? styles.bubbleTextFamily : styles.bubbleTextInmate,
-                ]}>
+                ]}
+              >
                 {item.text}
               </Text>
             )}
-            
+
             <View style={styles.bubbleFooter}>
               <Text style={styles.bubbleTime}>{item.time}</Text>
               {isFamily && renderMessageStatus(item.status)}
             </View>
           </View>
         </View>
-        
+
         {!showAvatar && <View style={styles.avatarSpacer} />}
       </View>
     );
@@ -354,13 +357,15 @@ const ChatScreen: React.FC = () => {
       </View>
     );
   }
-const avatarColor = getAvatarColor(conversation.inmateName);
-const initial = conversation.inmateName.charAt(0).toUpperCase();
+
+  const avatarColor = getAvatarColor(conversation.inmateName);
+  const initial = conversation.inmateName.charAt(0).toUpperCase();
+
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : insets.bottom}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -372,17 +377,17 @@ const initial = conversation.inmateName.charAt(0).toUpperCase();
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
 
-       <View style={styles.headerInfo}>
-  <View style={[styles.headerAvatar, { backgroundColor: avatarColor }]}>
-    <Text style={styles.headerAvatarText}>{initial}</Text>
-  </View>
-  <View style={styles.headerText}>
-    <Text style={styles.headerName}>{conversation.inmateName}</Text>
-    <Text style={styles.headerSub}>
-      {conversation.inmateId} • {conversation.facility}
-    </Text>
-  </View>
-</View>
+        <View style={styles.headerInfo}>
+          <View style={[styles.headerAvatar, { backgroundColor: avatarColor }]}>
+            <Text style={styles.headerAvatarText}>{initial}</Text>
+          </View>
+          <View style={styles.headerText}>
+            <Text style={styles.headerName}>{conversation.inmateName}</Text>
+            <Text style={styles.headerSub}>
+              {conversation.inmateId} • {conversation.facility}
+            </Text>
+          </View>
+        </View>
         <TouchableOpacity style={styles.headerButton}>
           <Text style={styles.headerButtonText}>⚙️</Text>
         </TouchableOpacity>
@@ -410,7 +415,12 @@ const initial = conversation.inmateName.charAt(0).toUpperCase();
       />
 
       {/* Input Bar */}
-      <View style={styles.inputContainer}>
+      <View
+        style={[
+          styles.inputContainer,
+          { paddingBottom: insets.bottom > 0 ? insets.bottom : 12 },
+        ]}
+      >
         <TouchableOpacity
           style={[styles.attachButton, sending && styles.attachButtonDisabled]}
           onPress={handlePickAttachment}
@@ -500,7 +510,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#2A2B31',
   },
- 
+
   backIcon: {
     color: '#E5E7EB',
     fontSize: 28,
@@ -608,7 +618,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     marginTop: 4,
-    
   },
   bubbleTime: {
     fontSize: 11,
@@ -649,8 +658,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 26,
+    paddingTop: 12,
     backgroundColor: '#1E1F25',
     borderTopWidth: 1,
     borderTopColor: '#2A2B31',

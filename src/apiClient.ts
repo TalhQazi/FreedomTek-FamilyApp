@@ -38,9 +38,37 @@ export async function familySignup(payload: {
   email: string;
   password: string;
   relation: string;
-  inmateId: string;
+  inmateIds: string[];
 }) {
   const res = await fetch(`${BASE_URL}/family/auth/signup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return handleResponse(res);
+}
+
+export async function familyForgotPassword(email: string) {
+  const res = await fetch(`${BASE_URL}/family/auth/forgot-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  return handleResponse(res);
+}
+
+export async function familyResetPassword(payload: {
+  email: string;
+  code: string;
+  newPassword: string;
+}) {
+  const res = await fetch(`${BASE_URL}/family/auth/reset-password`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -130,7 +158,7 @@ export async function getFamilyCalls(token: string) {
 
 export async function createFamilyCall(
   token: string,
-  payload: { scheduledAt: string; notes?: string },
+  payload: { scheduledAt: string; notes?: string; inmateId?: string },
 ) {
   const res = await fetch(`${BASE_URL}/family/calls`, {
     method: 'POST',

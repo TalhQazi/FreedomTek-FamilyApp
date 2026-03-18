@@ -23,14 +23,18 @@ const RegisterScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [relation, setRelation] = useState('');
-  const [inmateId, setInmateId] = useState('');
+  const [inmateIds, setInmateIds] = useState<string[]>(['INM-']);
   const [loading, setLoading] = useState(false);
   const [inmateNamePreview, setInmateNamePreview] = useState<string | null>(null);
 
   const validateEmail = (value: string) => /.+@.+\..+/.test(value);
 
   const handleRegister = async () => {
-    if (!name.trim() || !email.trim() || !password || !confirmPassword || !relation || !inmateId.trim()) {
+    const cleanedInmateIds = inmateIds
+      .map((id) => id.trim())
+      .filter((id) => id && id !== 'INM-');
+
+    if (!name.trim() || !email.trim() || !password || !confirmPassword || !relation || !cleanedInmateIds.length) {
       Alert.alert('Validation', 'Please fill all fields.');
       return;
     }
@@ -55,15 +59,15 @@ const RegisterScreen: React.FC = () => {
         name: name.trim(),
         email: email.trim(),
         relation,
-        inmateId: inmateId.trim(),
+        inmateIds: cleanedInmateIds,
       });
 
       setLoading(true);
 
       // Optional: try to show inmate name preview before creating account
       try {
-        console.log('[Register] Looking up inmate', inmateId.trim());
-        const inmate = await lookupInmate(inmateId.trim());
+        console.log('[Register] Looking up inmate', cleanedInmateIds[0]);
+        const inmate = await lookupInmate(cleanedInmateIds[0]);
         console.log('[Register] Inmate lookup success', inmate);
         setInmateNamePreview(inmate.name);
       } catch (lookupError) {
@@ -78,7 +82,7 @@ const RegisterScreen: React.FC = () => {
         email: email.trim(),
         password,
         relation,
-        inmateId: inmateId.trim(),
+        inmateIds: cleanedInmateIds,
       });
 
       console.log('[Register] Signup success', response);
@@ -111,9 +115,12 @@ const RegisterScreen: React.FC = () => {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={80}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.container}>
           <Text style={styles.heading}>Create Account</Text>
 
@@ -137,6 +144,31 @@ const RegisterScreen: React.FC = () => {
               value={email}
               onChangeText={setEmail}
             />
+              <Text style={styles.label}>Inmate ID(s)</Text>
+            {inmateIds.map((value, index) => (
+              <View key={index} style={styles.inmateRow}>
+                <TextInput
+                  style={[styles.input, styles.inmateInput]}
+                  placeholder="INM-1234"
+                  placeholderTextColor="#6B7280"
+                  autoCapitalize="characters"
+                  value={value}
+                  onChangeText={(text) => {
+                    const next = [...inmateIds];
+                    next[index] = text;
+                    setInmateIds(next);
+                  }}
+                />
+                {index === inmateIds.length - 1 && (
+                  <TouchableOpacity
+                    style={styles.addInmateButton}
+                    onPress={() => setInmateIds((prev) => [...prev, 'INM-'])}
+                  >
+                    <Text style={styles.addInmateButtonText}>+</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
 
             <Text style={styles.label}>Password</Text>
             <TextInput
@@ -179,15 +211,7 @@ const RegisterScreen: React.FC = () => {
               ))}
             </ScrollView>
 
-            <Text style={styles.label}>Inmate ID</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="FT-2213"
-              placeholderTextColor="#6B7280"
-              autoCapitalize="characters"
-              value={inmateId}
-              onChangeText={setInmateId}
-            />
+          
 
             <TouchableOpacity
               style={styles.button}
@@ -269,6 +293,28 @@ const styles = StyleSheet.create({
   },
   relationChipTextActive: {
     color: '#F9FAFB',
+    fontWeight: '600',
+  },
+  inmateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  inmateInput: {
+    flex: 1,
+  },
+  addInmateButton: {
+    marginLeft: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addInmateButtonText: {
+    color: '#E5E7EB',
+    fontSize: 22,
     fontWeight: '600',
   },
   button: {

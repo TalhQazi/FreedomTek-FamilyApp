@@ -36,6 +36,8 @@ type CurrentUser = {
   inmateId?: string;
   inmateName?: string;
   facility?: string;
+  inmateIds?: string[];
+  inmates?: { inmateId: string; name: string; facility?: string }[];
 };
 
 const DEFAULT_INMATE: InmateInfo = {
@@ -57,6 +59,7 @@ const HomeDashboardScreen: React.FC = () => {
 
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [inmate, setInmate] = useState<InmateInfo>(DEFAULT_INMATE);
+  const [inmates, setInmates] = useState<InmateInfo[]>([DEFAULT_INMATE]);
 
   const [unreadMessages, setUnreadMessages] = useState(4);
   const [pendingRequests, setPendingRequests] = useState(2);
@@ -77,15 +80,32 @@ const HomeDashboardScreen: React.FC = () => {
           const parsed: CurrentUser = JSON.parse(storedUser);
           setUser(parsed);
 
-          // Derive inmate info from backend user object
-          if (parsed.inmateId || parsed.inmateName || parsed.facility) {
-            setInmate({
-              name: parsed.inmateName || DEFAULT_INMATE.name,
-              id: parsed.inmateId || DEFAULT_INMATE.id,
-              facility: parsed.facility || DEFAULT_INMATE.facility,
+          let derivedInmates: InmateInfo[] = [];
+
+          // Prefer explicit inmates list from backend (multi-inmate support)
+          if (Array.isArray(parsed.inmates) && parsed.inmates.length) {
+            derivedInmates = parsed.inmates.map((i) => ({
+              name: i.name || DEFAULT_INMATE.name,
+              id: i.inmateId,
+              facility: i.facility || DEFAULT_INMATE.facility,
               status: DEFAULT_INMATE.status,
-            });
+            }));
+          } else if (parsed.inmateId || parsed.inmateName || parsed.facility) {
+            // Backwards-compatible single inmate
+            derivedInmates = [
+              {
+                name: parsed.inmateName || DEFAULT_INMATE.name,
+                id: parsed.inmateId || DEFAULT_INMATE.id,
+                facility: parsed.facility || DEFAULT_INMATE.facility,
+                status: DEFAULT_INMATE.status,
+              },
+            ];
+          } else {
+            derivedInmates = [DEFAULT_INMATE];
           }
+
+          setInmates(derivedInmates);
+          setInmate(derivedInmates[0] || DEFAULT_INMATE);
         }
       } catch {
         // If anything fails, we keep dummy defaults
@@ -397,27 +417,26 @@ const HomeDashboardScreen: React.FC = () => {
           </View>
         </Modal>
 
-        {/* Inmate card */}
-        <View style={styles.inmateCard}>
-          <View style={styles.inmateAvatar}>
-            <Text style={styles.inmateAvatarText}>{inmate.name.charAt(0)}</Text>
-          </View>
-          <View style={styles.inmateInfo}>
-            <View style={styles.inmateHeader}>
-              <Text style={styles.inmateName}>{inmate.name}</Text>
-              <View style={styles.statusBadge}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>{inmate.status}</Text>
+        {/* Inmates list */}
+        <View style={styles.inmateList}>
+          {inmates.map((i) => (
+            <View key={i.id} style={styles.inmateCardSmall}>
+              <View style={styles.inmateAvatarSmall}>
+                <Text style={styles.inmateAvatarText}>{i.name.charAt(0)}</Text>
+              </View>
+              <View style={styles.inmateInfo}>
+                <View style={styles.inmateHeader}>
+                  <Text style={styles.inmateNameSmall}>{i.name}</Text>
+                  <View style={styles.statusBadge}>
+                    <View style={styles.statusDot} />
+                    <Text style={styles.statusText}>{i.status}</Text>
+                  </View>
+                </View>
+                <Text style={styles.inmateMeta}>ID: {i.id}</Text>
+                <Text style={styles.inmateMeta}>Facility: {i.facility}</Text>
               </View>
             </View>
-            <Text style={styles.inmateMeta}>ID: {inmate.id}</Text>
-            <Text style={styles.inmateMeta}>Facility: {inmate.facility}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.viewProfileButton}
-            onPress={() => handleQuickNav('/home/profile')}>
-            <Text style={styles.viewProfileText}>View Profile</Text>
-          </TouchableOpacity>
+          ))}
         </View>
 
         {/* Quick actions */}
@@ -566,33 +585,55 @@ const styles = StyleSheet.create({
     color: '#E5E7EB',
     fontSize: 18,
   },
+  inmateList: {
+    marginBottom: 24,
+  },
   inmateCard: {
     backgroundColor: '#2A2B31',
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 18,
+    padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 5,
   },
+  inmateCardSmall: {
+    backgroundColor: '#2A2B31',
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   inmateAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#111827',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 14,
     borderWidth: 2,
+    borderColor: '#E63946',
+  },
+  inmateAvatarSmall: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
     borderColor: '#E63946',
   },
   inmateAvatarText: {
     color: '#E5E7EB',
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
   },
   inmateInfo: {
@@ -606,10 +647,17 @@ const styles = StyleSheet.create({
   },
   inmateName: {
     color: '#E5E7EB',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     marginRight: 8,
     marginBottom: 4,
+  },
+  inmateNameSmall: {
+    color: '#E5E7EB',
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 8,
+    marginBottom: 2,
   },
   statusBadge: {
     flexDirection: 'row',
